@@ -1,0 +1,8 @@
+--0.1.240727--
+	1.前端（image_processor.cpp与image_processor.h）在bool ImageProcessor::loadParameters()函数中添加了float ImageProcessor::stere_x_b变量用于记录双目基线
+	2.前端添加了void ImageProcessor::getdepth()函数以计算横向双目相机获取特征点的深度，储存在std::map<FeatureIDType, float> ImageProcessor::points_depth中（{特征点id:深度值}）
+	  注：函数仅能计算横向双目相机获取特征点的深度，计算中假设相机双目仅有水平基线，无纵向偏差（因为横向双目相机的纵向偏差过小，若考虑计算会对结果产生较大的错误扰动）
+	3.前端在drawFeaturesStereo()函数中在输出图片上标注深度计算结果
+	4.修改msg文件夹中FeatureMeasurement.msg文件内容，同时前端修改void ImageProcessor::publish()函数的feature_msg_ptr消息的内容，添加了特征点深度信息
+	5.前端添加了void ImageProcessor::get_point_cam0_3D()函数，其通过双目视差计算特征点在cam0坐标系下的三维坐标，结果直接输出在屏幕上
+

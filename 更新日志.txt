@@ -5,4 +5,6 @@
 	3.前端在drawFeaturesStereo()函数中在输出图片上标注深度计算结果
 	4.修改msg文件夹中FeatureMeasurement.msg文件内容，同时前端修改void ImageProcessor::publish()函数的feature_msg_ptr消息的内容，添加了特征点深度信息
 	5.前端添加了void ImageProcessor::get_point_cam0_3D()函数，其通过双目视差计算特征点在cam0坐标系下的三维坐标，结果直接输出在屏幕上
-
+	
+--0.1.240801--
+	1.前端（image_processor.cpp与image_processor.h）并行补充了imu积分的计算，静止初始化求解imu零飘已经测试完成，imu积分得到的相对位姿的验证仍未完成，存在问题（主要的相对速度的积分求解）

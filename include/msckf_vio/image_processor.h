@@ -22,6 +22,10 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 
+// CYQ 0.1.240801
+#include "imu_state.h"
+// #include <tf/transform_broadcaster.h>
+
 namespace msckf_vio {
 
 /*
@@ -94,6 +98,32 @@ private:
   std::map<FeatureIDType, float> points_depth;
   void getdepth();
   void get_point_cam0_3D();
+
+  // CYQ 0.1.240801
+  struct StateServer
+    {
+        IMUState imu_state;
+        int id;
+        // // 别看他长，其实就是一个map类
+        // // key是 StateIDType 由 long long int typedef而来，把它当作int看就行
+        // // value是CAMState
+        // CamStateServer cam_states;
+
+        // // State covariance matrix
+        // Eigen::MatrixXd state_cov;
+        // Eigen::Matrix<double, 12, 12> continuous_noise_cov;
+    };
+  // State vector
+  StateServer state_server;
+  bool is_gravity_set;
+  bool is_first_img_imu;
+  void initializeGravityAndBias();
+  std::vector<sensor_msgs::Imu> imu_msg_buffer_a;
+  void get_imu_pose(const sensor_msgs::ImageConstPtr& msg);
+  void batchImuProcessing(const double &time_bound);
+  void processModel(const double &time, const Eigen::Vector3d &m_gyro, const Eigen::Vector3d &m_acc);
+  void predictNewState(const double &dt, const Eigen::Vector3d &gyro, const Eigen::Vector3d &acc);
+
 
   /*
    * @brief GridFeatures Organize features based on the grid

@@ -24,7 +24,7 @@ add_custom_target(_msckf_vio_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg" NAME_WE)
 add_custom_target(_msckf_vio_generate_messages_check_deps_${_filename}
-  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "msckf_vio" "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg" "std_msgs/Header:msckf_vio/FeatureMeasurement"
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "msckf_vio" "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg" "msckf_vio/FeatureMeasurement:std_msgs/Header"
 )
 
 get_filename_component(_filename "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/TrackingInfo.msg" NAME_WE)
@@ -47,7 +47,7 @@ _generate_msg_cpp(msckf_vio
 _generate_msg_cpp(msckf_vio
   "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg"
+  "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/msckf_vio
 )
 _generate_msg_cpp(msckf_vio
@@ -96,7 +96,7 @@ _generate_msg_eus(msckf_vio
 _generate_msg_eus(msckf_vio
   "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg"
+  "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/msckf_vio
 )
 _generate_msg_eus(msckf_vio
@@ -145,7 +145,7 @@ _generate_msg_lisp(msckf_vio
 _generate_msg_lisp(msckf_vio
   "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg"
+  "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/msckf_vio
 )
 _generate_msg_lisp(msckf_vio
@@ -194,7 +194,7 @@ _generate_msg_nodejs(msckf_vio
 _generate_msg_nodejs(msckf_vio
   "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg"
+  "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/msckf_vio
 )
 _generate_msg_nodejs(msckf_vio
@@ -243,7 +243,7 @@ _generate_msg_py(msckf_vio
 _generate_msg_py(msckf_vio
   "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg"
   "${MSG_I_FLAGS}"
-  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg"
+  "/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/FeatureMeasurement.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/msckf_vio
 )
 _generate_msg_py(msckf_vio

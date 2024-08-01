@@ -65,8 +65,8 @@ devel/share/gennodejs/ros/msckf_vio/msg/FeatureMeasurement.js: ../msg/FeatureMea
 
 devel/share/gennodejs/ros/msckf_vio/msg/CameraMeasurement.js: /opt/ros/noetic/lib/gennodejs/gen_nodejs.py
 devel/share/gennodejs/ros/msckf_vio/msg/CameraMeasurement.js: ../msg/CameraMeasurement.msg
-devel/share/gennodejs/ros/msckf_vio/msg/CameraMeasurement.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 devel/share/gennodejs/ros/msckf_vio/msg/CameraMeasurement.js: ../msg/FeatureMeasurement.msg
+devel/share/gennodejs/ros/msckf_vio/msg/CameraMeasurement.js: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Generating Javascript code from msckf_vio/CameraMeasurement.msg"
 	catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gennodejs/cmake/../../../lib/gennodejs/gen_nodejs.py /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg -Imsckf_vio:/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -p msckf_vio -o /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/devel/share/gennodejs/ros/msckf_vio/msg
 

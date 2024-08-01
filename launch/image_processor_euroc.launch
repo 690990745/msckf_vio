@@ -22,6 +22,18 @@
       <param name="track_precision" value="0.01"/>
       <param name="ransac_threshold" value="3"/>
       <param name="stereo_threshold" value="5"/>
+      
+      <!-- CYQ 0.1.240801 -->
+      <!-- These values should be standard deviation -->
+      <param name="noise/gyro" value="0.005"/>
+      <param name="noise/acc" value="0.05"/>
+      <param name="noise/gyro_bias" value="0.001"/>
+      <param name="noise/acc_bias" value="0.01"/>
+      <param name="noise/feature" value="0.035"/>
+
+      <param name="initial_state/velocity/x" value="0.0"/>
+      <param name="initial_state/velocity/y" value="0.0"/>
+      <param name="initial_state/velocity/z" value="0.0"/>
 
       <remap from="~imu" to="/imu0"/>
       <remap from="~cam0_image" to="/cam0/image_raw"/>

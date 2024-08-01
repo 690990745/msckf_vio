@@ -18,18 +18,34 @@
 #include <msckf_vio/image_processor.h>
 #include <msckf_vio/utils.h>
 
+// CYQ 0.1.240801
+#include <eigen_conversions/eigen_msg.h>
+#include <msckf_vio/math_utils.hpp>
+// #include <tf_conversions/tf_eigen.h>
+
 using namespace std;
 using namespace cv;
 using namespace Eigen;
 
 namespace msckf_vio {
+// CYQ 0.1.240801
+// Static member variables in IMUState class.
+StateIDType IMUState::next_id = 0;
+double IMUState::gyro_noise = 0.001;
+double IMUState::acc_noise = 0.01;
+double IMUState::gyro_bias_noise = 0.001;
+double IMUState::acc_bias_noise = 0.01;
+Vector3d IMUState::gravity = Vector3d(0, 0, -GRAVITY_ACCELERATION);
+
 ImageProcessor::ImageProcessor(ros::NodeHandle& n) :
   nh(n),
   is_first_img(true),
+  is_first_img_imu(true),
   //img_transport(n),
   stereo_sub(10),
   prev_features_ptr(new GridFeatures()),
-  curr_features_ptr(new GridFeatures()) {
+  curr_features_ptr(new GridFeatures()),
+  is_gravity_set(false) { // CYQ 0.1.240801
   return;
 }
 
@@ -124,6 +140,34 @@ bool ImageProcessor::loadParameters() {
       processor_config.ransac_threshold, 3);
   nh.param<double>("stereo_threshold",
       processor_config.stereo_threshold, 3);
+  
+  // CYQ 0.1.240801
+  // Noise related parameters
+  // imu参数
+  nh.param<double>("noise/gyro", IMUState::gyro_noise, 0.001);
+  nh.param<double>("noise/acc", IMUState::acc_noise, 0.01);
+  nh.param<double>("noise/gyro_bias", IMUState::gyro_bias_noise, 0.001);
+  nh.param<double>("noise/acc_bias", IMUState::acc_bias_noise, 0.01);
+  // 特征的噪声
+  // nh.param<double>("noise/feature", Feature::observation_noise, 0.01);
+
+  // Use variance instead of standard deviation.
+  // 方差
+  IMUState::gyro_noise *= IMUState::gyro_noise;
+  IMUState::acc_noise *= IMUState::acc_noise;
+  IMUState::gyro_bias_noise *= IMUState::gyro_bias_noise;
+  IMUState::acc_bias_noise *= IMUState::acc_bias_noise;
+  // Feature::observation_noise *= Feature::observation_noise;
+
+  // Set the initial IMU state.
+  // The intial orientation and position will be set to the origin
+  // implicitly. But the initial velocity and bias can be
+  // set by parameters.
+  // TODO: is it reasonable to set the initial bias to 0?
+  // 设置初始化速度为0，那必须一开始处于静止了，也符合msckf的静态初始化了
+  nh.param<double>("initial_state/velocity/x", state_server.imu_state.velocity(0), 0.0);
+  nh.param<double>("initial_state/velocity/y", state_server.imu_state.velocity(1), 0.0);
+  nh.param<double>("initial_state/velocity/z", state_server.imu_state.velocity(2), 0.0);
 
   ROS_INFO("===========================================");
   ROS_INFO("cam0_resolution: %d, %d",
@@ -260,6 +304,29 @@ void ImageProcessor::stereoCallback(
     getdepth();
     get_point_cam0_3D();
 
+    // CYQ 0.1.240801
+    get_imu_pose(cam0_img);
+    // 输出检测
+    cout << state_server.imu_state.position << endl << endl;
+
+    
+    // start_time = ros::Time::now();
+    // Eigen::Quaterniond quaternion1(state_server.imu_state.orientation);
+    // Eigen::Vector3d position1 = state_server.imu_state.position;
+    // ofstream outfile;
+    // outfile.open("/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/traj_res_msckf.tum", ios::app);
+    // if(!outfile) //检查文件是否正常打开//不是用于检查文件是否存在
+    // {
+    //     cout<<"traj_res_msckf.tum can't open:"<<endl;
+    //      //打开失败，结束程序
+    // }
+    // else
+    // {
+    // outfile<<start_time<<" "<<position1.x()<<" "<<position1.y()<<" "<<position1.z()<<" "<<quaternion1.x()<< " "<<quaternion1.y()<<" "<<quaternion1.z()<<" "<<quaternion1.w()<< endl;
+    // // outfile<<time<<" "<<cyq_position1.x()<<" "<<cyq_position1.y()<<" "<<cyq_position1.z()<<" "<<cyq_quaternion1.x()<< " "<<cyq_quaternion1.y()<<" "<<cyq_quaternion1.z()<<" "<<cyq_quaternion1.w()<< endl;
+    // outfile.close();
+    // }
+
     // Draw results.
     start_time = ros::Time::now();
     drawFeaturesStereo();
@@ -298,7 +365,290 @@ void ImageProcessor::imuCallback(
   // Wait for the first image to be set.
   if (is_first_img) return;
   imu_msg_buffer.push_back(*msg);
+  imu_msg_buffer_a.push_back(*msg);
+
+  // CYQ 0.1.240801
+  // 2. 用200个imu数据做静止初始化，不够则不做
+  if (!is_gravity_set)
+  {
+    if (imu_msg_buffer_a.size() < 200)
+        return;
+    // if (imu_msg_buffer_a.size() < 10) return;
+    // imu初始化，200个数据必须都是静止时采集的
+    // ***这里面没有判断是否成功，也就是一开始如果运动会导致轨迹飘
+    // ***wkz: 可否通过pca或直接模长大小判断是否运动？
+    initializeGravityAndBias();
+    is_gravity_set = true;
+  }
   return;
+}
+
+// CYQ 0.1.240801
+/**
+ * @brief imu初始化，计算陀螺仪偏置，重力方向以及初始姿态，必须都是静止，且不做加速度计的偏置估计
+ * 要求初始化阶段保持静止状态
+ */
+void ImageProcessor::initializeGravityAndBias()
+{
+
+    // Initialize gravity and gyro bias.
+    // 1. 角速度与加速度的和
+    Vector3d sum_angular_vel = Vector3d::Zero();
+    Vector3d sum_linear_acc = Vector3d::Zero();
+
+    for (const auto &imu_msg : imu_msg_buffer_a)
+    {
+        Vector3d angular_vel = Vector3d::Zero();
+        Vector3d linear_acc = Vector3d::Zero();
+
+        tf::vectorMsgToEigen(imu_msg.angular_velocity, angular_vel);
+        tf::vectorMsgToEigen(imu_msg.linear_acceleration, linear_acc);
+
+        sum_angular_vel += angular_vel;
+        sum_linear_acc += linear_acc;
+    }
+
+    // 2. 因为假设静止的，因此陀螺仪理论应该都是0，额外读数包括偏置+噪声，但是噪声属于高斯分布
+    // 因此这一段相加噪声被认为互相抵消了，所以剩下的均值被认为是陀螺仪的初始偏置
+    state_server.imu_state.gyro_bias = sum_angular_vel / imu_msg_buffer_a.size();
+    // IMUState::gravity = -sum_linear_acc / imu_msg_buffer_a.size();
+    //  This is the gravity in the IMU frame.
+    // 3. 计算重力，忽略加速度计的偏置，剩下的就只有重力了
+    Vector3d gravity_imu = sum_linear_acc / imu_msg_buffer_a.size();
+
+    // Initialize the initial orientation, so that the estimation
+    // is consistent with the inertial frame.
+    // 重力本来的方向 (0, 0, -g)
+    double gravity_norm = gravity_imu.norm();
+    IMUState::gravity = Vector3d(0.0, 0.0, -gravity_norm);
+
+    // 求出当前imu状态的重力方向与实际重力方向的旋转 tosee 查看谁到谁的
+    // q0_i_w 即对应 wkz: Rwb，其中w对应世界坐标系，b对应IMU/body坐标系
+    // ???***这里为什么要加负号？***   --> JPL坐标系定义问题
+    // R = Eigen::Quaterniond::FromTwoVectors(v1,v2).toRotationMatrix();    返回的旋转矩阵是R*v1 = v2.
+    Quaterniond q0_i_w = Quaterniond::FromTwoVectors(gravity_imu, -IMUState::gravity);
+    // 得出姿态 wkz: Rbw
+    state_server.imu_state.orientation = rotationToQuaternion(q0_i_w.toRotationMatrix().transpose());
+
+    cout << state_server.imu_state.orientation << endl;
+
+    return;
+}
+
+// CYQ 0.1.240801
+/**
+ * @brief imu计算姿态
+ */
+void ImageProcessor::get_imu_pose(const sensor_msgs::ImageConstPtr& msg){
+  // Return if the gravity vector has not been set.
+  // 1. 必须经过imu初始化
+  if (!is_gravity_set)
+      return;
+  // Start the system if the first image is received.
+  // The frame where the first image is received will be
+  // the origin.
+  // 开始递推状态的第一个时刻为初始化后的第一帧特征
+  if (is_first_img_imu)
+  {
+      is_first_img_imu = false;
+      state_server.imu_state.time = msg->header.stamp.toSec();
+  }
+
+  state_server.imu_state.orientation << 0.0, 0.0, 0.0, 1.0;
+  state_server.imu_state.position << 0.0, 0.0, 0.0;
+
+  // // 调试使用
+  // static double max_processing_time = 0.0;
+  // static int critical_time_cntr = 0;
+  // double processing_start_time = ros::Time::now().toSec();
+
+  // Propogate the IMU state.
+  // that are received before the image msg.
+  // 2. imu积分
+  // ros::Time start_time = ros::Time::now();
+  // 递推位姿，计算F、G、phi、Q，更新协方差矩阵
+  // ***这里相当于每来一帧新图像（而不是IMU）才对IMU协方差做更新, 其实就是每处理一个imu数据就做一次更新
+  batchImuProcessing(msg->header.stamp.toSec());
+  return;
+}
+
+// CYQ 0.1.240801
+/**
+ * @brief imu积分，批量处理imu数据
+ * @param  time_bound 处理到这个时间(当前图像帧的时间)
+ */
+void ImageProcessor::batchImuProcessing(const double &time_bound)
+{
+    // Counter how many IMU msgs in the buffer are used.
+    int used_imu_msg_cntr = 0;
+
+    // 取出两帧之间的imu数据去递推位姿
+    // 这里有个细节问题， time_bound 表示新图片的时间戳，
+    // 但是IMU就积分到了距 time_bound 最近的一个，导致时间会差一点点
+    // ???*** 这里不需要数据锁？
+    for (const auto &imu_msg : imu_msg_buffer_a)
+    {
+        double imu_time = imu_msg.header.stamp.toSec();
+        // 小于，说明这个数据比较旧，因为 state_server.imu_state.time 代表已经处理过的imu数据的时间
+        if (imu_time < state_server.imu_state.time)
+        {
+            ++used_imu_msg_cntr;
+            continue;
+        }
+        // 超过的供下次使用
+        if (imu_time > time_bound)
+            break;
+
+        // Convert the msgs.
+        Vector3d m_gyro, m_acc;
+        tf::vectorMsgToEigen(imu_msg.angular_velocity, m_gyro);
+        tf::vectorMsgToEigen(imu_msg.linear_acceleration, m_acc);
+
+        // Execute process model.
+        // 递推位姿，核心函数，计算 F、G、phi、Q，更新协方差矩阵
+        processModel(imu_time, m_gyro, m_acc);
+        // predictNewState(dtime, gyro, acc);
+        ++used_imu_msg_cntr;
+    }
+
+    // Set the state ID for the new IMU state.
+    // 新的状态，更新id，相机状态的id也根据这个赋值
+    state_server.imu_state.id = IMUState::next_id++;
+
+    // 删掉已经用过
+    // Remove all used IMU msgs.
+    imu_msg_buffer_a.erase(
+        imu_msg_buffer_a.begin(),
+        imu_msg_buffer_a.begin() + used_imu_msg_cntr);
+
+    return;
+}
+
+// CYQ 0.1.240801
+/**
+ * @brief 来一个新的imu数据更新协方差矩阵与状态积分
+ * @param  time 新IMU数据时间戳
+ * @param  m_gyro 角速度
+ * @param  m_acc 加速度
+ */
+void ImageProcessor::processModel(const double &time, const Vector3d &m_gyro, const Vector3d &m_acc)
+{
+
+    // Remove the bias from the measured gyro and acceleration
+    // 以引用的方式取出
+    IMUState &imu_state = state_server.imu_state;
+
+    // 1. imu读数减掉偏置
+    Vector3d gyro = m_gyro - imu_state.gyro_bias;
+    Vector3d acc = m_acc - imu_state.acc_bias;  // acc_bias 初始值是0
+    // imu_state.time 为上一帧IMU数据的时间戳
+    double dtime = time - imu_state.time;
+
+    // Propogate the state using 4th order Runge-Kutta
+    // 4. 四阶龙格库塔积分预测状态 (标称状态积分)
+    // 对 state_server.imu_state 的旋转、位置和速度的标称状态做更新，其中旋转量是利用了四元数零阶积分更新的
+    // ???*** wkz: 这里是否可以理解为此处更新量的作用是为msckf提供了一个初值（单纯依靠IMU测量获得）? ***
+    // ——》 *** wkz: 后续理解：这里更新其实就是得到了新的*标称值*，可以再用于后续的误差状态递推 ***
+    // 另外其他状态不需要更新，因为其他量（偏执、重力、I和C之间的变换）本身就是均值不变的高斯分布***
+    predictNewState(dtime, gyro, acc);
+    // 更新了 q v p ,即:
+    // state_server.imu_state.orientation;
+    // state_server.imu_state.velocity;
+    // state_server.imu_state.position;
+    
+    // Update the state correspondes to null space.
+    // 9. 更新零空间，供下个IMU来了使用
+    imu_state.orientation_null = imu_state.orientation;
+    imu_state.position_null = imu_state.position;
+    imu_state.velocity_null = imu_state.velocity;
+
+    // Update the state info
+    state_server.imu_state.time = time;
+    return;
+}
+
+// CYQ 0.1.240801
+/**
+ * @brief 来一个新的imu数据做积分，应用四阶龙哥库塔法
+ * @param  dt 相对上一个数据的间隔时间
+ * @param  gyro 角速度减去偏置后的
+ * @param  acc 加速度减去偏置后的
+ */
+void ImageProcessor::predictNewState(const double &dt, const Vector3d &gyro, const Vector3d &acc)
+{
+
+    // TODO: Will performing the forward integration using
+    //    the inverse of the quaternion give better accuracy?
+
+    // 角速度，标量
+    // wkz: 参考视频附录（6）***
+    double gyro_norm = gyro.norm();
+    Matrix4d Omega = Matrix4d::Zero();
+    Omega.block<3, 3>(0, 0) = -skewSymmetric(gyro);
+    Omega.block<3, 1>(0, 3) = gyro;
+    Omega.block<1, 3>(3, 0) = -gyro;
+
+    // ***注意这里是引用，所以对q、v、p做的改变会更新到 state_server.imu_state 的对应状态量中
+    Vector4d &q = state_server.imu_state.orientation;
+    Vector3d &v = state_server.imu_state.velocity;
+    Vector3d &p = state_server.imu_state.position;
+
+    // Some pre-calculation
+    // dq_dt表示积分n到n+1
+    // dq_dt2表示积分n到n+0.5 算龙哥格库塔用的
+    Vector4d dq_dt, dq_dt2;
+    if (gyro_norm > 1e-5)
+    {
+        // wkz: 参考视频附录（6）***
+        dq_dt =
+            (cos(gyro_norm * dt * 0.5) * Matrix4d::Identity() +
+            1 / gyro_norm * sin(gyro_norm * dt * 0.5) * Omega) * q;
+        dq_dt2 =
+            (cos(gyro_norm * dt * 0.25) * Matrix4d::Identity() +
+            1 / gyro_norm * sin(gyro_norm * dt * 0.25) * Omega) * q;
+    }
+    else
+    {
+        // 当角增量很小时的近似
+        dq_dt = (Matrix4d::Identity() + 0.5 * dt * Omega) * cos(gyro_norm * dt * 0.5) * q;
+        dq_dt2 = (Matrix4d::Identity() + 0.25 * dt * Omega) * cos(gyro_norm * dt * 0.25) * q;
+    }
+    // Rwi
+    // 这里转换到了JPL
+    Matrix3d dR_dt_transpose = quaternionToRotation(dq_dt).transpose();
+    Matrix3d dR_dt2_transpose = quaternionToRotation(dq_dt2).transpose();
+
+    // k1 = f(tn, yn)
+    Vector3d k1_v_dot = quaternionToRotation(q).transpose() * acc + IMUState::gravity;
+    Vector3d k1_p_dot = v;
+
+    // k2 = f(tn+dt/2, yn+k1*dt/2)
+    // 这里的4阶LK法用了匀加速度假设，即认为前一时刻的加速度和当前时刻相等
+    Vector3d k1_v = v + k1_v_dot * dt / 2;
+    Vector3d k2_v_dot = dR_dt2_transpose * acc + IMUState::gravity;
+    Vector3d k2_p_dot = k1_v;
+
+    // k3 = f(tn+dt/2, yn+k2*dt/2)
+    Vector3d k2_v = v + k2_v_dot * dt / 2;
+    Vector3d k3_v_dot = dR_dt2_transpose * acc + IMUState::gravity;
+    Vector3d k3_p_dot = k2_v;
+
+    // k4 = f(tn+dt, yn+k3*dt)
+    Vector3d k3_v = v + k3_v_dot * dt;
+    Vector3d k4_v_dot = dR_dt_transpose * acc + IMUState::gravity;
+    Vector3d k4_p_dot = k3_v;
+
+    // yn+1 = yn + dt/6*(k1+2*k2+2*k3+k4)
+    q = dq_dt;
+    quaternionNormalize(q);
+    v = v + dt / 6 * (k1_v_dot + 2 * k2_v_dot + 2 * k3_v_dot + k4_v_dot);
+    p = p + dt / 6 * (k1_p_dot + 2 * k2_p_dot + 2 * k3_p_dot + k4_p_dot);
+
+    // cout << "q:" << q << endl;
+    // cout << "v:" << v << endl;
+    // cout << "p:" << p << endl<< endl;
+
+    return;
 }
 
 void ImageProcessor::createImagePyramids() {
@@ -1020,9 +1370,9 @@ void ImageProcessor::get_point_cam0_3D() {
     float y = curr_cam0_points_undistorted[i].y * d0;
     float z = 1 * d0;    
 
-    cout << "0:" << curr_cam0_points_undistorted[i] << endl
-         << "d:" << d0 << endl
-         << "3D: [" << x << "," << y << "," << z << "]" << endl;
+    // cout << "0:" << curr_cam0_points_undistorted[i] << endl
+    //      << "d:" << d0 << endl
+    //      << "3D: [" << x << "," << y << "," << z << "]" << endl;
   }
   return;
 }

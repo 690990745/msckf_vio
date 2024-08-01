@@ -66,8 +66,8 @@ devel/share/roseus/ros/msckf_vio/msg/FeatureMeasurement.l: ../msg/FeatureMeasure
 
 devel/share/roseus/ros/msckf_vio/msg/CameraMeasurement.l: /opt/ros/noetic/lib/geneus/gen_eus.py
 devel/share/roseus/ros/msckf_vio/msg/CameraMeasurement.l: ../msg/CameraMeasurement.msg
-devel/share/roseus/ros/msckf_vio/msg/CameraMeasurement.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 devel/share/roseus/ros/msckf_vio/msg/CameraMeasurement.l: ../msg/FeatureMeasurement.msg
+devel/share/roseus/ros/msckf_vio/msg/CameraMeasurement.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Generating EusLisp code from msckf_vio/CameraMeasurement.msg"
 	catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/geneus/cmake/../../../lib/geneus/gen_eus.py /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg -Imsckf_vio:/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -p msckf_vio -o /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/devel/share/roseus/ros/msckf_vio/msg
 

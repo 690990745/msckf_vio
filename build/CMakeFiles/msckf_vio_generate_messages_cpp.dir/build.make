@@ -66,8 +66,8 @@ devel/include/msckf_vio/FeatureMeasurement.h: /opt/ros/noetic/share/gencpp/msg.h
 
 devel/include/msckf_vio/CameraMeasurement.h: /opt/ros/noetic/lib/gencpp/gen_cpp.py
 devel/include/msckf_vio/CameraMeasurement.h: ../msg/CameraMeasurement.msg
-devel/include/msckf_vio/CameraMeasurement.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 devel/include/msckf_vio/CameraMeasurement.h: ../msg/FeatureMeasurement.msg
+devel/include/msckf_vio/CameraMeasurement.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 devel/include/msckf_vio/CameraMeasurement.h: /opt/ros/noetic/share/gencpp/msg.h.template
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Generating C++ code from msckf_vio/CameraMeasurement.msg"
 	cd /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio && /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/catkin_generated/env_cached.sh /usr/bin/python3 /opt/ros/noetic/share/gencpp/cmake/../../../lib/gencpp/gen_cpp.py /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg/CameraMeasurement.msg -Imsckf_vio:/home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -p msckf_vio -o /home/orangepi/cyq/task1/MSCKF_ws/src/msckf_vio/build/devel/include/msckf_vio -e /opt/ros/noetic/share/gencpp/cmake/..
